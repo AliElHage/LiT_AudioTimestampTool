@@ -1,0 +1,1 @@
+This tool is an interface that streamlines the timestamping of audio files that will be used in the game 'Lost in Transmission'. The timestamps are used to trigger events when used in conjunction with a timer. The final version will include in-depth instructions on how to use it.
