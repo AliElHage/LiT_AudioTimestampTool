@@ -8,6 +8,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,11 +26,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
+import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.border.BevelBorder;
+import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
@@ -42,7 +46,7 @@ import lit.codejava.controller.PlayingTimer;
 import model.AudioTool;
 import model.TimeBlock;
 
-public class SwingAudioPlayer extends JFrame implements ActionListener {
+public class testView extends JFrame implements ActionListener {
 
 	private Controller player = new Controller();
 	private Thread playbackThread;
@@ -60,8 +64,8 @@ public class SwingAudioPlayer extends JFrame implements ActionListener {
 	private String lastOpenPath;
 	
 	private JLabel labelFileName = new JLabel("Currently Playing:");
-	private JLabel labelTimeCounter = new JLabel("00:00:00");
-	private JLabel labelDuration = new JLabel("00:00:00");
+	private JLabel labelTimeCounter = new JLabel("00:00:00", SwingConstants.CENTER);
+	private JLabel labelDuration = new JLabel("00:00:00", SwingConstants.CENTER);
 	
 	private JButton buttonOpen = new JButton("Open");
 	private JButton buttonPlay = new JButton("Play");
@@ -113,7 +117,7 @@ public class SwingAudioPlayer extends JFrame implements ActionListener {
 	private ImageIcon iconBackwardSecond = new ImageIcon(getClass().getResource(
 			"/lit/codejava/audio/images/BackwardSecondSkip.png"));
 	
-	public SwingAudioPlayer(){
+	public testView(){
 		
 		super("LiT Audio Marker");
 		setLayout(new GridBagLayout());
@@ -160,11 +164,161 @@ public class SwingAudioPlayer extends JFrame implements ActionListener {
 		labelTimeCounter.setFont(new Font("Sans", Font.BOLD, 12));
 		labelDuration.setFont(new Font("Sans", Font.BOLD, 12));
 		
-		timeSlider.setPreferredSize(new Dimension(800, 20));
+		labelTimeCounter.setPreferredSize(new Dimension(buttonOpen.getPreferredSize().width, labelTimeCounter.getPreferredSize().height));
+		labelDuration.setPreferredSize(new Dimension(buttonOpen.getPreferredSize().width, labelDuration.getPreferredSize().height));
+		
+		timeSlider.setPreferredSize(new Dimension(820, 20));
 		timeSlider.setEnabled(false);
 		timeSlider.setValue(0);
+		
+		GridBagConstraints macroConstraints = new GridBagConstraints();
+		macroConstraints.insets = new Insets(5, 5, 5, 5);
+		macroConstraints.anchor = GridBagConstraints.CENTER;
+		
+		macroConstraints.gridx = 0;
+		macroConstraints.gridy = 0;
+		macroConstraints.gridwidth = 1;
+		
+		////////////////////////////////////////////////////////////////
+		// Audio Player Layout /////////////////////////////////////////
+		////////////////////////////////////////////////////////////////
+		
+		JPanel audioPlayerPanel = new JPanel(new GridBagLayout());
+		GridBagConstraints audioConstraints = new GridBagConstraints();
+		audioConstraints.insets = new Insets(5, 5, 5, 5);
+		audioConstraints.anchor = GridBagConstraints.WEST;
+		
+		// file name label
+		audioConstraints.gridx = 0;
+		audioConstraints.gridy = 0;
+		audioConstraints.gridwidth = 6;
+		
+		audioPlayerPanel.add(labelFileName, audioConstraints);
+		
+		// file open button
+		audioConstraints.gridx = 6;
+		audioConstraints.gridy = 0;
+		audioConstraints.gridwidth = 1;
+		
+		audioPlayerPanel.add(buttonOpen, audioConstraints);
+		
+		// current time label
+		audioConstraints.gridx = 0;
+		audioConstraints.gridy = 1;
+		audioConstraints.gridwidth = 1;
+		audioConstraints.weightx = 0.5;
+		audioConstraints.weighty = 0.5;
+		
+		audioPlayerPanel.add(labelTimeCounter, audioConstraints);
+		
+		// time slider
+		audioConstraints.gridx = 1;
+		audioConstraints.gridy = 1;
+		audioConstraints.gridwidth = 5;
+						
+		audioPlayerPanel.add(timeSlider, audioConstraints);
+		
+		// duration label
+		audioConstraints.gridx = 6;
+		audioConstraints.gridy = 1;
+		audioConstraints.gridwidth = 1;
+		audioConstraints.weightx = 0.5;
+		audioConstraints.weighty = 0.5;
+						
+		audioPlayerPanel.add(labelDuration, audioConstraints);
+		
+		// toggle loop button
+		audioConstraints.gridx = 0;
+		audioConstraints.gridy = 2;
+		audioConstraints.gridwidth = 1;
+		audioConstraints.anchor = GridBagConstraints.CENTER;
+		audioConstraints.insets = new Insets(10, 5, 5, 5);
+		
+		audioPlayerPanel.add(buttonToggleLoop, audioConstraints);
+		
+		// quick control panel
+		JPanel panelSkipFrame = new JPanel(new FlowLayout(FlowLayout.CENTER, 1, 5));
+		panelSkipFrame.add(buttonBackwardSecond);
+		panelSkipFrame.add(buttonSkipBackward);
+		panelSkipFrame.add(buttonQuickPlay);
+		panelSkipFrame.add(buttonSkipForward);
+		panelSkipFrame.add(buttonForwardSecond);
+		
+		audioConstraints.gridx = 1;
+		audioConstraints.gridy = 2;
+		audioConstraints.gridwidth = 1;
+		audioConstraints.anchor = GridBagConstraints.WEST;
+		audioPlayerPanel.add(panelSkipFrame, audioConstraints);
+		
+		// main play / stop panel
+		JPanel panelButtons = new JPanel(new FlowLayout(FlowLayout.CENTER, 1, 5));
+		panelButtons.add(buttonPlay);
+		panelButtons.add(buttonPause);
+		
+		audioConstraints.gridx = 1;
+		audioConstraints.gridy = 2;
+		audioConstraints.gridwidth = 1;
+		audioConstraints.anchor = GridBagConstraints.CENTER;
+		
+		audioPlayerPanel.add(panelButtons, audioConstraints);
+		
+		// add border to audio player
+		audioPlayerPanel.setBorder(BorderFactory.createEtchedBorder(EtchedBorder.LOWERED));
+		
+		// add audio player to main grid bag
+		add(audioPlayerPanel, macroConstraints);
+		
+		////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////
+		
+		macroConstraints.gridx = 0;
+		macroConstraints.gridy = 1;
+		macroConstraints.gridwidth = 1;
+		
+		////////////////////////////////////////////////////////////////
+		// Tabbed Timestamp Layout /////////////////////////////////////
+		////////////////////////////////////////////////////////////////
+		
+		JTabbedPane tabbedPane = new JTabbedPane();
+		tabbedPane.setPreferredSize(new Dimension(this.getPreferredSize().width, 300));
+		audioPlayerPanel.setPreferredSize(new Dimension(this.getPreferredSize().width, audioPlayerPanel.getPreferredSize().height));
+		JPanel timeBlockTab = new JPanel(new GridBagLayout());
+		tabbedPane.addTab("Key Frames", timeBlockTab);
+		tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
+		JPanel flowTimingTab = new JPanel(new GridBagLayout());
+		tabbedPane.addTab("Flow Timing", flowTimingTab);
+		tabbedPane.setMnemonicAt(1, KeyEvent.VK_2);
+		
+		//////////////////////////////////////////////////
+		// Time Block Tab ////////////////////////////////
+		
+		GridBagConstraints timeBlockConstraints = new GridBagConstraints();
+		timeBlockConstraints.insets = new Insets(5, 5, 5, 5);
+		timeBlockConstraints.anchor = GridBagConstraints.WEST;
+		
+		timeBlockConstraints.gridx = 0;
+		timeBlockConstraints.gridy = 0;
+		timeBlockConstraints.gridwidth = 1;
+		
+		// add TimeBlock preview panel
+		refreshTable();
+		setTableColumnsWidth();
+		timeBlockTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
+		timeBlockScrollPane = new JScrollPane(timeBlockTable);
+		timeBlockTab.add(timeBlockScrollPane, timeBlockConstraints);
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		// add tabbed layout to main grid bag
+		add(tabbedPane, macroConstraints);
+		
+		////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////
 
-		constraints.gridx = 0;
+		/*constraints.gridx = 0;
 		constraints.gridy = 0;
 		constraints.gridwidth = 2;
 		add(labelFileName, constraints);
@@ -250,7 +404,7 @@ public class SwingAudioPlayer extends JFrame implements ActionListener {
 		constraints.gridwidth = 1;
 		constraints.gridx = 2;
 		constraints.gridy = 3;
-		add(startTimeField, constraints);
+		add(startTimeField, constraints);*/
 		
 		buttonOpen.addActionListener(this);
 		buttonPlay.addActionListener(this);
@@ -447,17 +601,17 @@ public class SwingAudioPlayer extends JFrame implements ActionListener {
 					resetControls();
 
 				} catch (UnsupportedAudioFileException ex) {
-					JOptionPane.showMessageDialog(SwingAudioPlayer.this,  
+					JOptionPane.showMessageDialog(testView.this,  
 							"The audio format is unsupported!", "Error", JOptionPane.ERROR_MESSAGE);
 					resetControls();
 					ex.printStackTrace();
 				} catch (LineUnavailableException ex) {
-					JOptionPane.showMessageDialog(SwingAudioPlayer.this,  
+					JOptionPane.showMessageDialog(testView.this,  
 							"Could not play the audio file because line is unavailable!", "Error", JOptionPane.ERROR_MESSAGE);
 					resetControls();
 					ex.printStackTrace();
 				} catch (IOException ex) {
-					JOptionPane.showMessageDialog(SwingAudioPlayer.this,  
+					JOptionPane.showMessageDialog(testView.this,  
 							"I/O error while playing the audio file!", "Error", JOptionPane.ERROR_MESSAGE);
 					resetControls();
 					ex.printStackTrace();

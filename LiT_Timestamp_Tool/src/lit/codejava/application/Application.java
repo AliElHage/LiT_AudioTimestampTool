@@ -4,6 +4,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import lit.codejava.view.SwingAudioPlayer;
+import lit.codejava.view.testView;
 
 public class Application {
 	
@@ -19,7 +20,8 @@ public class Application {
 			
 			@Override
 			public void run() {
-				new SwingAudioPlayer().setVisible(true);
+				//new SwingAudioPlayer().setVisible(true);
+				new testView().setVisible(true);
 			}
 		});
 	}

@@ -10,6 +10,7 @@ public class AudioTool {
 	private static AudioTool theInstance = null;
 	
 	private List<TimeBlock> timeBlocks;
+	private String[] previewTableLabels = {"Start Time", "End Time", "Type", "Description"};
 	
 	private AudioTool(){
 		timeBlocks = new ArrayList <TimeBlock>();
@@ -21,6 +22,10 @@ public class AudioTool {
 			return theInstance;
 		}
 		else return theInstance;
+	}
+	
+	public String[] getPreviewLabels(){
+		  return previewTableLabels;
 	}
 	
 	public TimeBlock getTimeBlock(int index){
