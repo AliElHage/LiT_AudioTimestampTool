@@ -1,0 +1,16 @@
+<model.AudioTool id="1">
+  <timeBlocks id="2">
+    <model.TimeBlock id="3">
+      <description>rtjtyuil</description>
+      <startTime>3</startTime>
+      <endTime>4</endTime>
+      <type>1</type>
+    </model.TimeBlock>
+  </timeBlocks>
+  <previewTableLabels id="4">
+    <string>Start Time</string>
+    <string>End Time</string>
+    <string>Type</string>
+    <string>Description</string>
+  </previewTableLabels>
+</model.AudioTool>

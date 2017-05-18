@@ -1,5 +1,6 @@
 package lit.codejava.view;
 
+import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -9,6 +10,7 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.FontMetrics;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,18 +39,23 @@ import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
 
 import lit.codejava.controller.Controller;
 import lit.codejava.controller.GlobalTimer;
+import lit.codejava.controller.InvalidInputException;
 import lit.codejava.controller.PlayingTimer;
+import lit.codejava.controller.TimingController;
 import model.AudioTool;
 import model.TimeBlock;
 
 public class testView extends JFrame implements ActionListener {
 
 	private Controller player = new Controller();
+	private TimingController timingController;
 	private Thread playbackThread;
 	private PlayingTimer timer;
 	
@@ -76,6 +83,7 @@ public class testView extends JFrame implements ActionListener {
 	private JButton buttonSkipBackward = new JButton();
 	private JButton buttonForwardSecond = new JButton();
 	private JButton buttonBackwardSecond = new JButton();
+	private JButton buttonAddTimestamp = new JButton("Stamp");
 	
 	// for displaying TimeBlock objects
 	private ArrayList<TimeBlock> timeBlocks = new ArrayList();
@@ -93,8 +101,13 @@ public class testView extends JFrame implements ActionListener {
 	
 	// for inputting TimeBlock objects
 	private JTextField startTimeField = new JTextField(5);
-	private JTextField endTimeField = new JTextField();
-	private JTextField descriptionField = new JTextField();
+	private JTextField endTimeField = new JTextField(5);
+	private JTextField typeField = new JTextField(5);
+	private JTextField descriptionField = new JTextField(5);
+	private JLabel startTimeLabel = new JLabel("Start Time:");
+	private JLabel endTimeLabel = new JLabel("End Time:");
+	private JLabel typeLabel = new JLabel("Type:");
+	private JLabel descriptionLabel = new JLabel("Description:");
 	
 	private JSlider timeSlider = new JSlider();
 	
@@ -281,35 +294,125 @@ public class testView extends JFrame implements ActionListener {
 		////////////////////////////////////////////////////////////////
 		
 		JTabbedPane tabbedPane = new JTabbedPane();
-		tabbedPane.setPreferredSize(new Dimension(this.getPreferredSize().width, 300));
+		tabbedPane.setPreferredSize(new Dimension(this.getPreferredSize().width, 400));
 		audioPlayerPanel.setPreferredSize(new Dimension(this.getPreferredSize().width, audioPlayerPanel.getPreferredSize().height));
-		JPanel timeBlockTab = new JPanel(new GridBagLayout());
-		tabbedPane.addTab("Key Frames", timeBlockTab);
-		tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
-		JPanel flowTimingTab = new JPanel(new GridBagLayout());
-		tabbedPane.addTab("Flow Timing", flowTimingTab);
-		tabbedPane.setMnemonicAt(1, KeyEvent.VK_2);
 		
 		//////////////////////////////////////////////////
 		// Time Block Tab ////////////////////////////////
+		
+		JPanel timeBlockTab = new JPanel(new GridBagLayout());
 		
 		GridBagConstraints timeBlockConstraints = new GridBagConstraints();
 		timeBlockConstraints.insets = new Insets(5, 5, 5, 5);
 		timeBlockConstraints.anchor = GridBagConstraints.WEST;
 		
-		timeBlockConstraints.gridx = 0;
+		timeBlockConstraints.gridx = 1;
 		timeBlockConstraints.gridy = 0;
 		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 2;
 		
 		// add TimeBlock preview panel
 		refreshTable();
 		setTableColumnsWidth();
 		timeBlockTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
 		timeBlockScrollPane = new JScrollPane(timeBlockTable);
+		timeBlockScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		timeBlockScrollPane.setPreferredSize(new Dimension(600, 200));
+		
+		timeBlockTab.setPreferredSize(new Dimension(850, 220));
+		
 		timeBlockTab.add(timeBlockScrollPane, timeBlockConstraints);
+		
+		System.out.println(timeBlockTab.getPreferredSize());
 		
 		//////////////////////////////////////////////////
 		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
+		// Text Fields ///////////////////////////////////
+		
+		JPanel timeBlockFields = new JPanel(new GridBagLayout());
+		GridBagConstraints inputFieldConstraints = new GridBagConstraints();
+		inputFieldConstraints.insets = new Insets(5, 5, 5, 5);
+		inputFieldConstraints.anchor = GridBagConstraints.WEST;
+		
+		inputFieldConstraints.gridx = 0;
+		inputFieldConstraints.gridy = 0;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(startTimeLabel, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 1;
+		inputFieldConstraints.gridy = 0;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(startTimeField, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 0;
+		inputFieldConstraints.gridy = 1;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(endTimeLabel, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 1;
+		inputFieldConstraints.gridy = 1;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(endTimeField, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 0;
+		inputFieldConstraints.gridy = 2;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(typeLabel, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 1;
+		inputFieldConstraints.gridy = 2;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(typeField, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 0;
+		inputFieldConstraints.gridy = 3;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(descriptionLabel, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 1;
+		inputFieldConstraints.gridy = 3;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(descriptionField, inputFieldConstraints);
+		
+		timeBlockConstraints.gridx = 0;
+		timeBlockConstraints.gridy = 0;
+		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 1;
+		
+		timeBlockTab.add(buttonAddTimestamp, timeBlockConstraints);
+		
+		timeBlockConstraints.gridx = 0;
+		timeBlockConstraints.gridy = 1;
+		timeBlockConstraints.gridwidth = 1;
+		
+		timeBlockTab.add(timeBlockFields, timeBlockConstraints);
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
+		// Flow Timing Tab ///////////////////////////////
+		
+		JPanel flowTimingTab = new JPanel(new GridBagLayout());
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		// fit panels as tabs
+		tabbedPane.addTab("Key Frames", timeBlockTab);
+		tabbedPane.setMnemonicAt(0, KeyEvent.VK_1);
+		tabbedPane.addTab("Flow Timing", flowTimingTab);
+		tabbedPane.setMnemonicAt(1, KeyEvent.VK_2);
 		
 		// add tabbed layout to main grid bag
 		add(tabbedPane, macroConstraints);
@@ -415,6 +518,7 @@ public class testView extends JFrame implements ActionListener {
 		buttonForwardSecond.addActionListener(this);
 		buttonBackwardSecond.addActionListener(this);
 		buttonQuickPlay.addActionListener(this);
+		buttonAddTimestamp.addActionListener(this);
 		
 		//timer = new PlayingTimer(labelTimeCounter, timeSlider);
 		
@@ -504,6 +608,14 @@ public class testView extends JFrame implements ActionListener {
 				toggleLoop();
 				System.out.println(player.getLoopEnabled());
 			}
+			else if(button == buttonAddTimestamp){
+				try {
+					createTimeBlock();
+				} catch (InvalidInputException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
 		
 	}
@@ -589,6 +701,8 @@ public class testView extends JFrame implements ActionListener {
 					player.load(audioFilePath);
 					timer.setAudioClip(player.getAudioClip());
 					timeSlider.setEnabled(true);
+					
+					timingController = new TimingController(player);//////////////////////
 					
 					String croppedPath = cropString(audioFilePath);
 					
@@ -696,7 +810,16 @@ public class testView extends JFrame implements ActionListener {
 			playBack();
 			interrupted = false;
 		}
+	}
+	
+	private void createTimeBlock() throws InvalidInputException{
+		Long startTime = Long.valueOf(startTimeField.getText());
+		Long endTime = Long.valueOf(endTimeField.getText());
+		Integer type = Integer.valueOf(typeField.getText());
+		String description = descriptionField.getText();
 		
+		timingController.createTimeBlock(startTime, endTime, type, description);
+		refreshTable();
 	}
 	
 	private void refreshTable(){
@@ -708,22 +831,37 @@ public class testView extends JFrame implements ActionListener {
 		types.clear();
 		descriptions.clear();
 		
+		DefaultTableModel model = new DefaultTableModel(10, 4) ;
+		model.setColumnIdentifiers(master.getPreviewLabels());
+		timeBlockTable.setModel(model);
+		
 		if(timeBlocks.size() == 0){
-			DefaultTableModel model = new DefaultTableModel(10, 4) ;
 			model.setColumnIdentifiers(master.getPreviewLabels());
 			timeBlockTable.setModel(model);
 		}
 		else if(timeBlocks.size() > 0){
 			for(int i = 0; i < timeBlocks.size(); i++){
-				startTimes.set(i, timeBlocks.get(i).getStartTime() + "");
-				endTimes.set(i, timeBlocks.get(i).getEndTime() + "");
-				types.set(i, timeBlocks.get(i).getType() + "");
-				descriptions.set(i, timeBlocks.get(i).getDescription() + "");
+				startTimes.add(i, timeBlocks.get(i).getStartTime() + "");
+				endTimes.add(i, timeBlocks.get(i).getEndTime() + "");
+				types.add(i, timeBlocks.get(i).getType() + "");
+				descriptions.add(i, timeBlocks.get(i).getDescription() + "");
 			}
 			
 			String[][] data = {startTimes.toArray(new String[startTimes.size()]), endTimes.toArray(new String[endTimes.size()]), 
 					types.toArray(new String[types.size()]), descriptions.toArray(new String[descriptions.size()])};
-			timeBlockTable = new JTable(data, master.getPreviewLabels());
+			System.out.println("lele" + data[0][0]);
+			
+			String[][] treatedData = new String[timeBlocks.size()][data.length];
+			
+			for(int i = 0; i < timeBlocks.size(); i++){
+				for(int j = 0; j < data.length; j++){
+					treatedData[i][j] = data[j][i];
+				}
+			}
+			
+			model.setDataVector(treatedData, master.getPreviewLabels());
+			setTableColumnsWidth();
+			timeBlockTable.setModel(model);
 		}
 		timeBlockTable.setFillsViewportHeight(true);
 		
@@ -732,9 +870,13 @@ public class testView extends JFrame implements ActionListener {
 	public void setTableColumnsWidth(){
 		final TableColumnModel columnModel = timeBlockTable.getColumnModel();
 		for(int i = 0; i < timeBlockTable.getColumnCount(); i++){
-			columnModel.getColumn(i).setPreferredWidth(100);
-		}
-			
+			if(i == timeBlockTable.getColumnCount() - 1){
+				columnModel.getColumn(i).setPreferredWidth(300);
+			}
+			else{
+				columnModel.getColumn(i).setPreferredWidth(100);
+			}
+		}		
 	}
 	
 	private String cropString(String path){
