@@ -36,6 +36,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.border.BevelBorder;
 import javax.swing.border.EtchedBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
@@ -84,6 +85,8 @@ public class testView extends JFrame implements ActionListener {
 	private JButton buttonForwardSecond = new JButton();
 	private JButton buttonBackwardSecond = new JButton();
 	private JButton buttonAddTimestamp = new JButton("Stamp");
+	private JButton buttonSampleStart = new JButton();
+	private JButton buttonSampleEnd = new JButton();
 	
 	// for displaying TimeBlock objects
 	private ArrayList<TimeBlock> timeBlocks = new ArrayList();
@@ -100,10 +103,10 @@ public class testView extends JFrame implements ActionListener {
 	private String endTime;
 	
 	// for inputting TimeBlock objects
-	private JTextField startTimeField = new JTextField(5);
-	private JTextField endTimeField = new JTextField(5);
-	private JTextField typeField = new JTextField(5);
-	private JTextField descriptionField = new JTextField(5);
+	private JTextField startTimeField = new JTextField(10);
+	private JTextField endTimeField = new JTextField(10);
+	private JTextField typeField = new JTextField(10);
+	private JTextField descriptionField = new JTextField(10);
 	private JLabel startTimeLabel = new JLabel("Start Time:");
 	private JLabel endTimeLabel = new JLabel("End Time:");
 	private JLabel typeLabel = new JLabel("Type:");
@@ -129,6 +132,8 @@ public class testView extends JFrame implements ActionListener {
 			"/lit/codejava/audio/images/ForwardSecondSkip.png"));
 	private ImageIcon iconBackwardSecond = new ImageIcon(getClass().getResource(
 			"/lit/codejava/audio/images/BackwardSecondSkip.png"));
+	private ImageIcon iconSample = new ImageIcon(getClass().getResource(
+			"/lit/codejava/audio/images/Sample.png"));
 	
 	public testView(){
 		
@@ -173,6 +178,14 @@ public class testView extends JFrame implements ActionListener {
 		buttonQuickPlay.setIcon(iconPlay);
 		buttonQuickPlay.setPreferredSize(new Dimension(30, buttonQuickPlay.getPreferredSize().height));
 		buttonQuickPlay.setEnabled(false);
+		
+		buttonSampleStart.setIcon(iconSample);
+		buttonSampleStart.setPreferredSize(new Dimension(30, buttonSampleStart.getPreferredSize().height));
+		buttonSampleStart.setEnabled(false);
+		
+		buttonSampleEnd.setIcon(iconSample);
+		buttonSampleEnd.setPreferredSize(new Dimension(30, buttonSampleEnd.getPreferredSize().height));
+		buttonSampleEnd.setEnabled(false);
 		
 		labelTimeCounter.setFont(new Font("Sans", Font.BOLD, 12));
 		labelDuration.setFont(new Font("Sans", Font.BOLD, 12));
@@ -317,7 +330,7 @@ public class testView extends JFrame implements ActionListener {
 		timeBlockTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
 		timeBlockScrollPane = new JScrollPane(timeBlockTable);
 		timeBlockScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		timeBlockScrollPane.setPreferredSize(new Dimension(600, 200));
+		timeBlockScrollPane.setPreferredSize(new Dimension(600, 340));
 		
 		timeBlockTab.setPreferredSize(new Dimension(850, 220));
 		
@@ -346,7 +359,14 @@ public class testView extends JFrame implements ActionListener {
 		inputFieldConstraints.gridy = 0;
 		inputFieldConstraints.gridwidth = 1;
 		
+		startTimeField.setEnabled(false);
 		timeBlockFields.add(startTimeField, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 2;
+		inputFieldConstraints.gridy = 0;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(buttonSampleStart, inputFieldConstraints);
 		
 		inputFieldConstraints.gridx = 0;
 		inputFieldConstraints.gridy = 1;
@@ -358,7 +378,14 @@ public class testView extends JFrame implements ActionListener {
 		inputFieldConstraints.gridy = 1;
 		inputFieldConstraints.gridwidth = 1;
 		
+		endTimeField.setEnabled(false);
 		timeBlockFields.add(endTimeField, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 2;
+		inputFieldConstraints.gridy = 1;
+		inputFieldConstraints.gridwidth = 1;
+		
+		timeBlockFields.add(buttonSampleEnd, inputFieldConstraints);
 		
 		inputFieldConstraints.gridx = 0;
 		inputFieldConstraints.gridy = 2;
@@ -370,6 +397,7 @@ public class testView extends JFrame implements ActionListener {
 		inputFieldConstraints.gridy = 2;
 		inputFieldConstraints.gridwidth = 1;
 		
+		typeField.setEnabled(false);
 		timeBlockFields.add(typeField, inputFieldConstraints);
 		
 		inputFieldConstraints.gridx = 0;
@@ -382,17 +410,24 @@ public class testView extends JFrame implements ActionListener {
 		inputFieldConstraints.gridy = 3;
 		inputFieldConstraints.gridwidth = 1;
 		
+		descriptionField.setEnabled(false);
 		timeBlockFields.add(descriptionField, inputFieldConstraints);
 		
+		// add border to timeBlockFields
+		TitledBorder title;
+		title = BorderFactory.createTitledBorder("Create Timestamp");
+		title.setTitleJustification(TitledBorder.LEFT);
+		timeBlockFields.setBorder(title);
+		
 		timeBlockConstraints.gridx = 0;
-		timeBlockConstraints.gridy = 0;
+		timeBlockConstraints.gridy = 1;
 		timeBlockConstraints.gridwidth = 1;
 		timeBlockConstraints.gridheight = 1;
 		
 		timeBlockTab.add(buttonAddTimestamp, timeBlockConstraints);
 		
 		timeBlockConstraints.gridx = 0;
-		timeBlockConstraints.gridy = 1;
+		timeBlockConstraints.gridy = 0;
 		timeBlockConstraints.gridwidth = 1;
 		
 		timeBlockTab.add(timeBlockFields, timeBlockConstraints);
@@ -519,6 +554,8 @@ public class testView extends JFrame implements ActionListener {
 		buttonBackwardSecond.addActionListener(this);
 		buttonQuickPlay.addActionListener(this);
 		buttonAddTimestamp.addActionListener(this);
+		buttonSampleStart.addActionListener(this);
+		buttonSampleEnd.addActionListener(this);
 		
 		//timer = new PlayingTimer(labelTimeCounter, timeSlider);
 		
@@ -616,6 +653,9 @@ public class testView extends JFrame implements ActionListener {
 					e.printStackTrace();
 				}
 			}
+			else if(button == buttonSampleStart || button == buttonSampleEnd){
+				sampleTime(button);
+			}
 		}
 		
 	}
@@ -670,6 +710,13 @@ public class testView extends JFrame implements ActionListener {
 			buttonSkipBackward.setEnabled(true);
 			buttonForwardSecond.setEnabled(true);
 			buttonBackwardSecond.setEnabled(true);
+			buttonSampleStart.setEnabled(true);
+			buttonSampleEnd.setEnabled(true);
+			
+			startTimeField.setEnabled(true);
+			endTimeField.setEnabled(true);
+			typeField.setEnabled(true);
+			descriptionField.setEnabled(true);
 		}
 	}
 
@@ -820,6 +867,18 @@ public class testView extends JFrame implements ActionListener {
 		
 		timingController.createTimeBlock(startTime, endTime, type, description);
 		refreshTable();
+	}
+	
+	private void sampleTime(JButton button){
+		int time = 0;
+		if(button.equals(buttonSampleStart)){
+			time = timeSlider.getValue() * 100;
+			startTimeField.setText(Integer.toString(time));
+		}
+		else if(button.equals(buttonSampleEnd)){
+			time = timeSlider.getValue() * 100;
+			endTimeField.setText(Integer.toString(time));
+		}
 	}
 	
 	private void refreshTable(){
