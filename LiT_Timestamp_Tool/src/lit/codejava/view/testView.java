@@ -1,6 +1,8 @@
 package lit.codejava.view;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -87,6 +89,7 @@ public class testView extends JFrame implements ActionListener {
 	private JButton buttonAddTimestamp = new JButton("Stamp");
 	private JButton buttonSampleStart = new JButton();
 	private JButton buttonSampleEnd = new JButton();
+	private JButton buttonDeleteSelected = new JButton("Delete Selected");
 	
 	// for displaying TimeBlock objects
 	private ArrayList<TimeBlock> timeBlocks = new ArrayList();
@@ -111,6 +114,7 @@ public class testView extends JFrame implements ActionListener {
 	private JLabel endTimeLabel = new JLabel("End Time:");
 	private JLabel typeLabel = new JLabel("Type:");
 	private JLabel descriptionLabel = new JLabel("Description:");
+	private JLabel errorLogLabel = new JLabel();
 	
 	private JSlider timeSlider = new JSlider();
 	
@@ -187,6 +191,11 @@ public class testView extends JFrame implements ActionListener {
 		buttonSampleEnd.setPreferredSize(new Dimension(30, buttonSampleEnd.getPreferredSize().height));
 		buttonSampleEnd.setEnabled(false);
 		
+		buttonDeleteSelected.setEnabled(false);
+		
+		errorLogLabel.setForeground(Color.RED);
+		errorLogLabel.setVerticalAlignment(SwingConstants.TOP);
+		
 		labelTimeCounter.setFont(new Font("Sans", Font.BOLD, 12));
 		labelDuration.setFont(new Font("Sans", Font.BOLD, 12));
 		
@@ -196,6 +205,16 @@ public class testView extends JFrame implements ActionListener {
 		timeSlider.setPreferredSize(new Dimension(820, 20));
 		timeSlider.setEnabled(false);
 		timeSlider.setValue(0);
+		
+		timeBlockTable.addMouseListener(new java.awt.event.MouseAdapter() {
+		    @Override
+		    public void mouseClicked(java.awt.event.MouseEvent evt) {
+		        int row = timeBlockTable.rowAtPoint(evt.getPoint());
+		        int col = timeBlockTable.columnAtPoint(evt.getPoint());
+		        startTimeField.setText(timeBlockTable.getValueAt(row, 0).toString());
+		        endTimeField.setText(timeBlockTable.getValueAt(row, 1).toString());
+		    }
+		});
 		
 		GridBagConstraints macroConstraints = new GridBagConstraints();
 		macroConstraints.insets = new Insets(5, 5, 5, 5);
@@ -322,7 +341,7 @@ public class testView extends JFrame implements ActionListener {
 		timeBlockConstraints.gridx = 1;
 		timeBlockConstraints.gridy = 0;
 		timeBlockConstraints.gridwidth = 1;
-		timeBlockConstraints.gridheight = 2;
+		timeBlockConstraints.gridheight = 1;
 		
 		// add TimeBlock preview panel
 		refreshTable();
@@ -330,7 +349,7 @@ public class testView extends JFrame implements ActionListener {
 		timeBlockTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
 		timeBlockScrollPane = new JScrollPane(timeBlockTable);
 		timeBlockScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		timeBlockScrollPane.setPreferredSize(new Dimension(600, 340));
+		timeBlockScrollPane.setPreferredSize(new Dimension(600, 208));
 		
 		timeBlockTab.setPreferredSize(new Dimension(850, 220));
 		
@@ -413,6 +432,20 @@ public class testView extends JFrame implements ActionListener {
 		descriptionField.setEnabled(false);
 		timeBlockFields.add(descriptionField, inputFieldConstraints);
 		
+		inputFieldConstraints.gridx = 0;
+		inputFieldConstraints.gridy = 4;
+		inputFieldConstraints.gridwidth = 1;
+		inputFieldConstraints.gridheight = 1;
+		
+		timeBlockFields.add(buttonAddTimestamp, inputFieldConstraints);
+		
+		inputFieldConstraints.gridx = 1;
+		inputFieldConstraints.gridy = 4;
+		inputFieldConstraints.gridwidth = 1;
+		inputFieldConstraints.gridheight = 1;
+		
+		timeBlockFields.add(buttonDeleteSelected, inputFieldConstraints);
+		
 		// add border to timeBlockFields
 		TitledBorder title;
 		title = BorderFactory.createTitledBorder("Create Timestamp");
@@ -420,17 +453,22 @@ public class testView extends JFrame implements ActionListener {
 		timeBlockFields.setBorder(title);
 		
 		timeBlockConstraints.gridx = 0;
+		timeBlockConstraints.gridy = 0;
+		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 1;
+		
+		timeBlockTab.add(timeBlockFields, timeBlockConstraints);
+		
+		// add error log
+		errorLogLabel.setPreferredSize(new Dimension(timeBlockFields.getPreferredSize().width, 116));
+		timeBlockConstraints.gridx = 0;
 		timeBlockConstraints.gridy = 1;
 		timeBlockConstraints.gridwidth = 1;
 		timeBlockConstraints.gridheight = 1;
 		
-		timeBlockTab.add(buttonAddTimestamp, timeBlockConstraints);
+		errorLogLabel.setBorder(BorderFactory.createLoweredBevelBorder());
 		
-		timeBlockConstraints.gridx = 0;
-		timeBlockConstraints.gridy = 0;
-		timeBlockConstraints.gridwidth = 1;
-		
-		timeBlockTab.add(timeBlockFields, timeBlockConstraints);
+		timeBlockTab.add(errorLogLabel, timeBlockConstraints);
 		
 		//////////////////////////////////////////////////
 		//////////////////////////////////////////////////
@@ -556,6 +594,7 @@ public class testView extends JFrame implements ActionListener {
 		buttonAddTimestamp.addActionListener(this);
 		buttonSampleStart.addActionListener(this);
 		buttonSampleEnd.addActionListener(this);
+		buttonDeleteSelected.addActionListener(this);
 		
 		//timer = new PlayingTimer(labelTimeCounter, timeSlider);
 		
@@ -648,13 +687,17 @@ public class testView extends JFrame implements ActionListener {
 			else if(button == buttonAddTimestamp){
 				try {
 					createTimeBlock();
+					errorLogLabel.setText("");
 				} catch (InvalidInputException e) {
-					// TODO Auto-generated catch block
+					errorLogLabel.setText("<html>" + e.getMessage() + "</html>");
 					e.printStackTrace();
 				}
 			}
 			else if(button == buttonSampleStart || button == buttonSampleEnd){
 				sampleTime(button);
+			}
+			else if(button == buttonDeleteSelected){
+				deleteTimestamp();
 			}
 		}
 		
@@ -712,6 +755,7 @@ public class testView extends JFrame implements ActionListener {
 			buttonBackwardSecond.setEnabled(true);
 			buttonSampleStart.setEnabled(true);
 			buttonSampleEnd.setEnabled(true);
+			buttonDeleteSelected.setEnabled(true);
 			
 			startTimeField.setEnabled(true);
 			endTimeField.setEnabled(true);
@@ -860,13 +904,26 @@ public class testView extends JFrame implements ActionListener {
 	}
 	
 	private void createTimeBlock() throws InvalidInputException{
-		Long startTime = Long.valueOf(startTimeField.getText());
-		Long endTime = Long.valueOf(endTimeField.getText());
-		Integer type = Integer.valueOf(typeField.getText());
-		String description = descriptionField.getText();
+		
+		Long startTime = null;
+		Long endTime = null;
+		Integer type = null;
+		String description = null;
+		try{
+			startTime = Long.valueOf(startTimeField.getText());
+			endTime = Long.valueOf(endTimeField.getText());
+			type = Integer.valueOf(typeField.getText());
+			description = descriptionField.getText();
+		} catch(Exception e){
+			errorLogLabel.setText("<html>Start time, end time and type must be numbers.</html>");
+		}
 		
 		timingController.createTimeBlock(startTime, endTime, type, description);
 		refreshTable();
+		startTimeField.setText("");
+		endTimeField.setText("");
+		typeField.setText("");
+		descriptionField.setText("");
 	}
 	
 	private void sampleTime(JButton button){
@@ -881,6 +938,21 @@ public class testView extends JFrame implements ActionListener {
 		}
 	}
 	
+	public void deleteTimestamp(){
+		int row = timeBlockTable.getSelectedRow();
+		timeBlocks.remove(row);
+		refreshTable();
+		/*for(int i = 0; i < timeBlocks.size(); i++){
+			if(timeBlockTable.getValueAt(row, 0).toString().equals(timeBlocks.get(i).getStartTime())){
+				if(timeBlockTable.getValueAt(row, 1).toString().equals(timeBlocks.get(i).getEndTime())){
+					if(timeBlockTable.getValueAt(row, 2).toString().equals(timeBlocks.get(i).getEndTime())){
+						
+					}
+				}
+			}
+		}*/
+	}
+	
 	private void refreshTable(){
 		AudioTool master = AudioTool.getInstance();
 		timeBlocks = (ArrayList)master.getTimeBlocks();
@@ -890,7 +962,7 @@ public class testView extends JFrame implements ActionListener {
 		types.clear();
 		descriptions.clear();
 		
-		DefaultTableModel model = new DefaultTableModel(10, 4) ;
+		DefaultTableModel model = new DefaultTableModel(0, 4) ;
 		model.setColumnIdentifiers(master.getPreviewLabels());
 		timeBlockTable.setModel(model);
 		
@@ -908,7 +980,6 @@ public class testView extends JFrame implements ActionListener {
 			
 			String[][] data = {startTimes.toArray(new String[startTimes.size()]), endTimes.toArray(new String[endTimes.size()]), 
 					types.toArray(new String[types.size()]), descriptions.toArray(new String[descriptions.size()])};
-			System.out.println("lele" + data[0][0]);
 			
 			String[][] treatedData = new String[timeBlocks.size()][data.length];
 			
@@ -922,6 +993,7 @@ public class testView extends JFrame implements ActionListener {
 			setTableColumnsWidth();
 			timeBlockTable.setModel(model);
 		}
+		setTableColumnsWidth();
 		timeBlockTable.setFillsViewportHeight(true);
 		
 	}
