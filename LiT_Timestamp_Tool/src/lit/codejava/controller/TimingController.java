@@ -49,5 +49,20 @@ public class TimingController {
 		master.addTimeBlock(timeBlock);
 		PersistenceXStream.saveToXMLwithXStream(master);
 	}
+	
+	public void addTime(Long time) throws InvalidInputException{
+		AudioTool master = AudioTool.getInstance();
+		String error = "";
+		if(time < 0)
+			error += "Time must be greater than 0!";
+		if(time > clip.getMicrosecondLength() / 1000)
+			error += "Time must be within length of audio clip!";
+		error = error.trim();
+		if(error.length() > 0)
+			throw new InvalidInputException(error);
+		
+		master.addToTimeline(time);
+		PersistenceXStream.saveToXMLwithXStream(master);
+	}
 
 }

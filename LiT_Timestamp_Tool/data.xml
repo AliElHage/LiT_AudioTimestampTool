@@ -1,28 +1,15 @@
 <model.AudioTool id="1">
-  <timeBlocks id="2">
-    <model.TimeBlock id="3">
-      <description>kek</description>
-      <startTime>3300</startTime>
-      <endTime>3800</endTime>
-      <type>2</type>
-    </model.TimeBlock>
-    <model.TimeBlock id="4">
-      <description>lol</description>
-      <startTime>32700</startTime>
-      <endTime>34000</endTime>
-      <type>1</type>
-    </model.TimeBlock>
-    <model.TimeBlock id="5">
-      <description>fdhgnbstftny</description>
-      <startTime>4800</startTime>
-      <endTime>7600</endTime>
-      <type>1</type>
-    </model.TimeBlock>
-  </timeBlocks>
-  <previewTableLabels id="6">
+  <timeBlocks id="2"/>
+  <previewTableLabels id="3">
     <string>Start Time</string>
     <string>End Time</string>
     <string>Type</string>
     <string>Description</string>
   </previewTableLabels>
+  <times id="4">
+    <long>1000</long>
+    <long>2100</long>
+    <long>3100</long>
+    <long>4300</long>
+  </times>
 </model.AudioTool>

@@ -12,10 +12,24 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.FontMetrics;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -44,14 +58,18 @@ import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
+
+import com.thoughtworks.xstream.io.path.Path;
 
 import lit.codejava.controller.Controller;
 import lit.codejava.controller.GlobalTimer;
 import lit.codejava.controller.InvalidInputException;
 import lit.codejava.controller.PlayingTimer;
 import lit.codejava.controller.TimingController;
+import lit.codejava.persistence.Persistence;
 import model.AudioTool;
 import model.TimeBlock;
 
@@ -61,6 +79,7 @@ public class testView extends JFrame implements ActionListener {
 	private TimingController timingController;
 	private Thread playbackThread;
 	private PlayingTimer timer;
+	private TimeBlock tbInMemory;
 	
 	private boolean isPlaying = false;
 	private boolean isPaused = false;
@@ -69,9 +88,14 @@ public class testView extends JFrame implements ActionListener {
 	
 	private long initialTime = 0;
 	private long finalTime = 0;
+	private long targetTime = 0;
+	
+	private Long selectedTime = null;
 	
 	private String audioFilePath;
 	private String lastOpenPath;
+	private String xmlFilePath;
+	private String xmlLastOpenPath;
 	
 	private JLabel labelFileName = new JLabel("Currently Playing:");
 	private JLabel labelTimeCounter = new JLabel("00:00:00", SwingConstants.CENTER);
@@ -90,6 +114,13 @@ public class testView extends JFrame implements ActionListener {
 	private JButton buttonSampleStart = new JButton();
 	private JButton buttonSampleEnd = new JButton();
 	private JButton buttonDeleteSelected = new JButton("Delete Selected");
+	private JButton buttonUndoDelete = new JButton("Undo Delete");
+	private JButton buttonGoToStamp = new JButton("Go To Selected");
+	private JButton buttonSaveFile = new JButton("Save File");
+	private JButton buttonLoadFile = new JButton("Load File");
+	private JButton buttonTimelineStamp = new JButton("Stamp");
+	private JButton buttonTimelineRemove = new JButton("Delete Selected");
+	private JButton buttonTimelineRedo = new JButton("Undo Delete");
 	
 	// for displaying TimeBlock objects
 	private ArrayList<TimeBlock> timeBlocks = new ArrayList();
@@ -97,8 +128,11 @@ public class testView extends JFrame implements ActionListener {
 	private ArrayList<String> endTimes = new ArrayList();
 	private ArrayList<String> types = new ArrayList();
 	private ArrayList<String> descriptions = new ArrayList();
+	private ArrayList<Long> timeline = new ArrayList();
 	private JScrollPane timeBlockScrollPane;
+	private JScrollPane timelineScrollPane;
 	private JTable timeBlockTable = new JTable();
+	private JTable timelineTable = new JTable();
 	private JTextArea timeBlockInfo = new JTextArea();
 	private String timeBlockType;
 	private String timeBlockDescription;
@@ -115,6 +149,8 @@ public class testView extends JFrame implements ActionListener {
 	private JLabel typeLabel = new JLabel("Type:");
 	private JLabel descriptionLabel = new JLabel("Description:");
 	private JLabel errorLogLabel = new JLabel();
+	private JLabel convertedStartTime = new JLabel("Start Time: ");
+	private JLabel convertedEndTime = new JLabel("End Time: ");
 	
 	private JSlider timeSlider = new JSlider();
 	
@@ -191,7 +227,30 @@ public class testView extends JFrame implements ActionListener {
 		buttonSampleEnd.setPreferredSize(new Dimension(30, buttonSampleEnd.getPreferredSize().height));
 		buttonSampleEnd.setEnabled(false);
 		
+		buttonAddTimestamp.setEnabled(false);
 		buttonDeleteSelected.setEnabled(false);
+		buttonDeleteSelected.setPreferredSize(new Dimension(buttonDeleteSelected.getPreferredSize().width + 50, buttonDeleteSelected.getPreferredSize().height));
+		
+		buttonUndoDelete.setEnabled(false);
+		buttonUndoDelete.setPreferredSize(new Dimension(buttonDeleteSelected.getPreferredSize().width, buttonUndoDelete.getPreferredSize().height));
+		
+		buttonGoToStamp.setEnabled(false);
+		buttonGoToStamp.setPreferredSize(new Dimension(buttonGoToStamp.getPreferredSize().width + 30, buttonGoToStamp.getPreferredSize().height));
+		
+		buttonSaveFile.setEnabled(false);
+		buttonSaveFile.setPreferredSize(new Dimension(buttonSaveFile.getPreferredSize().width + 64, buttonSaveFile.getPreferredSize().height));
+		
+		buttonLoadFile.setEnabled(false);
+		buttonLoadFile.setPreferredSize(new Dimension(buttonLoadFile.getPreferredSize().width + 64, buttonLoadFile.getPreferredSize().height));
+		
+		buttonTimelineStamp.setEnabled(false);
+		buttonTimelineStamp.setPreferredSize(new Dimension(150, buttonTimelineStamp.getPreferredSize().height));
+		
+		buttonTimelineRemove.setEnabled(false);
+		buttonTimelineRemove.setPreferredSize(new Dimension(150, buttonTimelineRemove.getPreferredSize().height));
+		
+		buttonTimelineRedo.setEnabled(false);
+		buttonTimelineRedo.setPreferredSize(new Dimension(150, buttonTimelineRedo.getPreferredSize().height));
 		
 		errorLogLabel.setForeground(Color.RED);
 		errorLogLabel.setVerticalAlignment(SwingConstants.TOP);
@@ -213,6 +272,36 @@ public class testView extends JFrame implements ActionListener {
 		        int col = timeBlockTable.columnAtPoint(evt.getPoint());
 		        startTimeField.setText(timeBlockTable.getValueAt(row, 0).toString());
 		        endTimeField.setText(timeBlockTable.getValueAt(row, 1).toString());
+		        
+		        long millis = Long.valueOf(timeBlockTable.getValueAt(row, 0).toString());
+		        long second = (millis / 1000) % 60;
+		        long minute = (millis / (1000 * 60)) % 60;
+		        long hour = (millis / (1000 * 60 * 60)) % 24;
+
+		        String startTime = String.format("%02d:%02d:%02d", hour, minute, second);
+		        convertedStartTime.setText("Start Time: " + startTime);
+		        
+		        targetTime = millis;
+		        
+		        millis = Long.valueOf(timeBlockTable.getValueAt(row, 1).toString());
+		        second = (millis / 1000) % 60;
+		        minute = (millis / (1000 * 60)) % 60;
+		        hour = (millis / (1000 * 60 * 60)) % 24;
+
+		        String endTime = String.format("%02d:%02d:%02d", hour, minute, second);
+		        convertedEndTime.setText("End Time:  " + endTime);
+		    }
+		});
+		
+		timeBlockTable.getTableHeader().addMouseListener(new MouseAdapter() {
+		    @Override
+		    public void mouseClicked(java.awt.event.MouseEvent e) {
+		        int col = timeBlockTable.columnAtPoint(e.getPoint());
+		        String name = timeBlockTable.getColumnName(col);
+		        System.out.println("Column index selected " + col + " " + name);
+		        AudioTool master = AudioTool.getInstance();
+		        master.sortTimeBlocks(col);
+		        refreshTable();
 		    }
 		});
 		
@@ -340,7 +429,7 @@ public class testView extends JFrame implements ActionListener {
 		
 		timeBlockConstraints.gridx = 1;
 		timeBlockConstraints.gridy = 0;
-		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridwidth = 3;
 		timeBlockConstraints.gridheight = 1;
 		
 		// add TimeBlock preview panel
@@ -439,12 +528,12 @@ public class testView extends JFrame implements ActionListener {
 		
 		timeBlockFields.add(buttonAddTimestamp, inputFieldConstraints);
 		
-		inputFieldConstraints.gridx = 1;
+/*		inputFieldConstraints.gridx = 1;
 		inputFieldConstraints.gridy = 4;
 		inputFieldConstraints.gridwidth = 1;
 		inputFieldConstraints.gridheight = 1;
 		
-		timeBlockFields.add(buttonDeleteSelected, inputFieldConstraints);
+		timeBlockFields.add(buttonDeleteSelected, inputFieldConstraints);*/
 		
 		// add border to timeBlockFields
 		TitledBorder title;
@@ -459,7 +548,11 @@ public class testView extends JFrame implements ActionListener {
 		
 		timeBlockTab.add(timeBlockFields, timeBlockConstraints);
 		
-		// add error log
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
+		// add error log /////////////////////////////////
 		errorLogLabel.setPreferredSize(new Dimension(timeBlockFields.getPreferredSize().width, 116));
 		timeBlockConstraints.gridx = 0;
 		timeBlockConstraints.gridy = 1;
@@ -474,9 +567,145 @@ public class testView extends JFrame implements ActionListener {
 		//////////////////////////////////////////////////
 		
 		//////////////////////////////////////////////////
+		// modify table panel ////////////////////////////
+		
+		JPanel modifyTableElementsPanel = new JPanel(new GridBagLayout());
+		GridBagConstraints modifyTableConstraints = new GridBagConstraints();
+		modifyTableConstraints.insets = new Insets(5, 5, 5, 5);
+		modifyTableConstraints.anchor = GridBagConstraints.WEST;
+		
+		modifyTableConstraints.gridx = 0;
+		modifyTableConstraints.gridy = 0;
+		
+		modifyTableElementsPanel.add(buttonDeleteSelected, modifyTableConstraints);
+		
+		modifyTableConstraints.gridx = 0;
+		modifyTableConstraints.gridy = 1;
+		
+		modifyTableElementsPanel.add(buttonUndoDelete, modifyTableConstraints);
+		
+		// add border to modifyTableElementsPanel
+		title = BorderFactory.createTitledBorder("Remove Timestamps");
+		title.setTitleJustification(TitledBorder.LEFT);
+		modifyTableElementsPanel.setBorder(title);
+		
+		timeBlockConstraints.gridx = 1;
+		timeBlockConstraints.gridy = 1;
+		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 1;
+		
+		timeBlockTab.add(modifyTableElementsPanel, timeBlockConstraints);
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
+		// Go To Selected Panel //////////////////////////
+		
+		JPanel goToSelectedPanel = new JPanel(new GridBagLayout());
+		GridBagConstraints goToSelectedConstraints = new GridBagConstraints();
+		goToSelectedConstraints.insets = new Insets(5, 5, 5, 5);
+		goToSelectedConstraints.anchor = GridBagConstraints.WEST;
+		
+		goToSelectedConstraints.gridx = 0;
+		goToSelectedConstraints.gridy = 0;
+		
+		goToSelectedPanel.add(convertedStartTime, goToSelectedConstraints);
+		
+		goToSelectedConstraints.gridx = 0;
+		goToSelectedConstraints.gridy = 1;
+		
+		goToSelectedPanel.add(convertedEndTime, goToSelectedConstraints);
+		
+		goToSelectedConstraints.gridx = 0;
+		goToSelectedConstraints.gridy = 2;
+		
+		goToSelectedPanel.add(buttonGoToStamp, goToSelectedConstraints);
+		
+		title = BorderFactory.createTitledBorder("Go To");
+		title.setTitleJustification(TitledBorder.LEFT);
+		goToSelectedPanel.setBorder(title);
+		
+		timeBlockConstraints.gridx = 2;
+		timeBlockConstraints.gridy = 1;
+		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 1;
+		
+		timeBlockTab.add(goToSelectedPanel, timeBlockConstraints);
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
+		// Save or Load Panel ////////////////////////////
+		
+		JPanel saveLoadPanel = new JPanel(new GridBagLayout());
+		GridBagConstraints saveLoadConstraints = new GridBagConstraints();
+		saveLoadConstraints.insets = new Insets(5, 5, 5, 5);
+		saveLoadConstraints.anchor = GridBagConstraints.WEST;
+		
+		saveLoadConstraints.gridx = 0;
+		saveLoadConstraints.gridy = 0;
+		
+		saveLoadPanel.add(buttonSaveFile, saveLoadConstraints);
+		
+		saveLoadConstraints.gridx = 0;
+		saveLoadConstraints.gridy = 1;
+		
+		saveLoadPanel.add(buttonLoadFile, saveLoadConstraints);
+		
+		title = BorderFactory.createTitledBorder("Load/Save File");
+		title.setTitleJustification(TitledBorder.LEFT);
+		saveLoadPanel.setBorder(title);
+		
+		timeBlockConstraints.gridx = 3;
+		timeBlockConstraints.gridy = 1;
+		timeBlockConstraints.gridwidth = 1;
+		timeBlockConstraints.gridheight = 1;
+		
+		timeBlockTab.add(saveLoadPanel, timeBlockConstraints);
+		
+		//////////////////////////////////////////////////
+		//////////////////////////////////////////////////
+		
+		//////////////////////////////////////////////////
 		// Flow Timing Tab ///////////////////////////////
 		
 		JPanel flowTimingTab = new JPanel(new GridBagLayout());
+		
+		GridBagConstraints timelineTabConstraints = new GridBagConstraints();
+		timelineTabConstraints.insets = new Insets(5, 5, 5, 5);
+		timelineTabConstraints.anchor = GridBagConstraints.CENTER;
+		
+		timelineTabConstraints.gridx = 0;
+		timelineTabConstraints.gridy = 1;
+		timelineTabConstraints.gridwidth = 1;
+		timelineTabConstraints.gridheight = 1;
+		
+		refreshTimeline();
+		setTimelineColumnsWidth();
+		
+		JTableHeader header = timelineTable.getTableHeader();
+		header.setDefaultRenderer(new HeaderRenderer(timelineTable));
+		
+		timelineTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
+		timelineScrollPane = new JScrollPane(timelineTable);
+		timelineScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		timelineScrollPane.setPreferredSize(new Dimension(600, 208));
+		
+		flowTimingTab.add(timelineScrollPane, timelineTabConstraints);
+		
+		JPanel timelineButtons = new JPanel();
+		timelineButtons.add(buttonTimelineStamp);
+		timelineButtons.add(buttonTimelineRemove);
+		timelineButtons.add(buttonTimelineRedo);
+		
+		timelineTabConstraints.gridx = 0;
+		timelineTabConstraints.gridy = 0;
+		timelineTabConstraints.gridwidth = 1;
+		timelineTabConstraints.gridheight = 1;
+		
+		flowTimingTab.add(timelineButtons, timelineTabConstraints);
 		
 		//////////////////////////////////////////////////
 		//////////////////////////////////////////////////
@@ -595,37 +824,44 @@ public class testView extends JFrame implements ActionListener {
 		buttonSampleStart.addActionListener(this);
 		buttonSampleEnd.addActionListener(this);
 		buttonDeleteSelected.addActionListener(this);
+		buttonUndoDelete.addActionListener(this);
+		buttonGoToStamp.addActionListener(this);
+		buttonSaveFile.addActionListener(this);
+		buttonLoadFile.addActionListener(this);
+		buttonTimelineStamp.addActionListener(this);
+		buttonTimelineRemove.addActionListener(this);
+		buttonTimelineRedo.addActionListener(this);
 		
 		//timer = new PlayingTimer(labelTimeCounter, timeSlider);
 		
 		timeSlider.addChangeListener(new ChangeListener() {
-        @Override
-        public void stateChanged(ChangeEvent e) {
-            if (!GlobalTimer.getTimerUpdate() && !GlobalTimer.getUserUpdate()) {
-            	JSlider source = (JSlider)e.getSource();
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				if (!GlobalTimer.getTimerUpdate() && !GlobalTimer.getUserUpdate()) {
+					JSlider source = (JSlider)e.getSource();
+					
+					if(!GlobalTimer.getStateChanged()){
+						GlobalTimer.setStateChanged(true);
+						GlobalTimer.setInitPosition(source.getValue());
+						initialTime = System.currentTimeMillis();
+					}
             	
-            	if(!GlobalTimer.getStateChanged()){
-            		GlobalTimer.setStateChanged(true);
-            		GlobalTimer.setInitPosition(source.getValue());
-            		initialTime = System.currentTimeMillis();
-            	}
-            	
-            	if(!source.getValueIsAdjusting()){
-            		GlobalTimer.setUserUpdate(true);
-            		finalTime = System.currentTimeMillis();
-            		GlobalTimer.addMoveDelay(finalTime - initialTime);
-            	}
-            	//System.out.println(finalTime - initialTime);
-                try {
-                    int progress = timeSlider.getValue();
-                    long time = (long) progress * 100000;
-                    player.getAudioClip().setMicrosecondPosition(time);
-                } finally {
+					if(!source.getValueIsAdjusting()){
+						GlobalTimer.setUserUpdate(true);
+						finalTime = System.currentTimeMillis();
+						GlobalTimer.addMoveDelay(finalTime - initialTime);
+					}
+					//System.out.println(finalTime - initialTime);
+					try {
+						int progress = timeSlider.getValue();
+						long time = (long) progress * 100000;
+						player.getAudioClip().setMicrosecondPosition(time);
+					} finally {
                 	
-                }
-            }
-        }
-    });
+					}
+				}
+			}
+		});
 		
 		pack();
 		setResizable(false);
@@ -699,6 +935,32 @@ public class testView extends JFrame implements ActionListener {
 			else if(button == buttonDeleteSelected){
 				deleteTimestamp();
 			}
+			else if(button == buttonUndoDelete){
+				undoDelete();
+			}
+			else if(button == buttonGoToStamp){
+				goToSelected();
+			}
+			else if(button == buttonSaveFile){
+				saveFile();
+			}
+			else if(button == buttonLoadFile){
+				loadFile();
+			}
+			else if(button == buttonTimelineStamp){
+				try {
+					createTimelineTime();
+				} catch (InvalidInputException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			else if(button == buttonTimelineRemove){
+				deleteFromTimeline();
+			}
+			else if(button == buttonTimelineRedo){
+				undoDeleteFromTimeline();
+			}
 		}
 		
 	}
@@ -756,6 +1018,14 @@ public class testView extends JFrame implements ActionListener {
 			buttonSampleStart.setEnabled(true);
 			buttonSampleEnd.setEnabled(true);
 			buttonDeleteSelected.setEnabled(true);
+			buttonAddTimestamp.setEnabled(true);
+			buttonUndoDelete.setEnabled(true);
+			buttonGoToStamp.setEnabled(true);
+			buttonSaveFile.setEnabled(true);
+			buttonLoadFile.setEnabled(true);
+			buttonTimelineStamp.setEnabled(true);
+			buttonTimelineRemove.setEnabled(true);
+			buttonTimelineRedo.setEnabled(true);
 			
 			startTimeField.setEnabled(true);
 			endTimeField.setEnabled(true);
@@ -926,6 +1196,15 @@ public class testView extends JFrame implements ActionListener {
 		descriptionField.setText("");
 	}
 	
+	private void createTimelineTime() throws InvalidInputException{
+		
+		long time = timeSlider.getValue() * 100;
+		
+		timingController.addTime(time);
+		refreshTimeline();
+		setTimelineColumnsWidth();
+	}
+	
 	private void sampleTime(JButton button){
 		int time = 0;
 		if(button.equals(buttonSampleStart)){
@@ -938,19 +1217,38 @@ public class testView extends JFrame implements ActionListener {
 		}
 	}
 	
+	private void goToSelected(){
+		timeSlider.setValue((int)targetTime / 100);
+	}
+	
 	public void deleteTimestamp(){
 		int row = timeBlockTable.getSelectedRow();
+		tbInMemory = timeBlocks.get(row);
 		timeBlocks.remove(row);
 		refreshTable();
-		/*for(int i = 0; i < timeBlocks.size(); i++){
-			if(timeBlockTable.getValueAt(row, 0).toString().equals(timeBlocks.get(i).getStartTime())){
-				if(timeBlockTable.getValueAt(row, 1).toString().equals(timeBlocks.get(i).getEndTime())){
-					if(timeBlockTable.getValueAt(row, 2).toString().equals(timeBlocks.get(i).getEndTime())){
-						
-					}
-				}
-			}
-		}*/
+	}
+	
+	public void undoDelete(){
+		if(tbInMemory != null){
+			timeBlocks.add(tbInMemory);
+			refreshTable();
+		}
+	}
+	
+	public void deleteFromTimeline(){
+		int row = timelineTable.getSelectedRow();
+		selectedTime = timeline.get(row);
+		timeline.remove(row);
+		refreshTimeline();
+		setTimelineColumnsWidth();
+	}
+	
+	public void undoDeleteFromTimeline(){
+		if(selectedTime != null){
+			timeline.add(selectedTime);
+			refreshTimeline();
+			setTimelineColumnsWidth();
+		}
 	}
 	
 	private void refreshTable(){
@@ -998,6 +1296,32 @@ public class testView extends JFrame implements ActionListener {
 		
 	}
 	
+	public void refreshTimeline(){
+		String[] identifier = {"Time Stamps"};
+		AudioTool master = AudioTool.getInstance();
+		timeline = (ArrayList)master.getTimeline();
+		
+		String treatedTimeline[] = new String[timeline.size()];
+		for(int i = 0; i < timeline.size(); i++){
+			treatedTimeline[i] = timeline.get(i) + "";
+		}
+		
+		DefaultTableModel model = new DefaultTableModel(0, 1) ;
+		model.setColumnIdentifiers(identifier);
+		
+		String[][] data = {treatedTimeline};
+		String[][] treatedData = new String[timeline.size()][data.length];
+		for(int i = 0; i < timeline.size(); i++){
+			for(int j = 0; j < data.length; j++){
+				treatedData[i][j] = data[j][i];
+			}
+		}
+		model.setDataVector(treatedData, identifier);
+		
+		timelineTable.setModel(model);
+		timelineTable.setFillsViewportHeight(true);
+	}
+	
 	public void setTableColumnsWidth(){
 		final TableColumnModel columnModel = timeBlockTable.getColumnModel();
 		for(int i = 0; i < timeBlockTable.getColumnCount(); i++){
@@ -1008,6 +1332,13 @@ public class testView extends JFrame implements ActionListener {
 				columnModel.getColumn(i).setPreferredWidth(100);
 			}
 		}		
+	}
+	
+	public void setTimelineColumnsWidth(){
+		final TableColumnModel columnModel = timelineTable.getColumnModel();
+		for(int i = 0; i < timelineTable.getColumnCount(); i++){
+			columnModel.getColumn(i).setPreferredWidth(600);
+		}
 	}
 	
 	private String cropString(String path){
@@ -1021,6 +1352,112 @@ public class testView extends JFrame implements ActionListener {
 			croppedPath += path.charAt(index);
 		}
 		return croppedPath;
+	}
+	
+	private void loadFile() {
+		JFileChooser fileChooser = null;
+		
+		if (xmlLastOpenPath != null && !xmlLastOpenPath.equals("")) {
+			fileChooser = new JFileChooser(xmlLastOpenPath);
+		} else {
+			fileChooser = new JFileChooser();
+		}
+		
+		FileFilter wavFilter = new FileFilter() {
+			@Override
+			public String getDescription() {
+				return "XML file (*.xml)";
+			}
+
+			@Override
+			public boolean accept(File file) {
+				if (file.isDirectory()) {
+					return true;
+				} else {
+					return file.getName().toLowerCase().endsWith(".xml");
+				}
+			}
+		};
+
+		
+		fileChooser.setFileFilter(wavFilter);
+		fileChooser.setDialogTitle("Open Timestamp File");
+		fileChooser.setAcceptAllFileFilterUsed(false);
+
+		int userChoice = fileChooser.showOpenDialog(this);
+		if (userChoice == JFileChooser.APPROVE_OPTION) {
+			xmlFilePath = fileChooser.getSelectedFile().getAbsolutePath();
+			xmlLastOpenPath = fileChooser.getSelectedFile().getParent();
+			Persistence.loadModel(xmlFilePath);
+			refreshTable();
+			tbInMemory = null;
+		}
+	}
+	
+	private void saveFile() {
+		JFileChooser fileChooser = null;
+		
+		if (xmlLastOpenPath != null && !xmlLastOpenPath.equals("")) {
+			fileChooser = new JFileChooser(xmlLastOpenPath);
+		} else {
+			fileChooser = new JFileChooser();
+		}
+		
+		FileFilter wavFilter = new FileFilter() {
+			@Override
+			public String getDescription() {
+				return "XML file (*.xml)";
+			}
+
+			@Override
+			public boolean accept(File file) {
+				if (file.isDirectory()) {
+					return true;
+				} else {
+					return file.getName().toLowerCase().endsWith(".xml");
+				}
+			}
+		};
+
+		
+		fileChooser.setFileFilter(wavFilter);
+		fileChooser.setDialogTitle("Save Timestamp File");
+		fileChooser.setAcceptAllFileFilterUsed(false);
+
+		int userChoice = fileChooser.showSaveDialog(this);
+		if (userChoice == JFileChooser.APPROVE_OPTION) {
+			xmlFilePath = fileChooser.getSelectedFile().getAbsolutePath();
+			xmlLastOpenPath = fileChooser.getSelectedFile().getParent();
+			try {
+				String path = fileChooser.getSelectedFile().getAbsolutePath();
+				String filename = fileChooser.getSelectedFile().getName();
+				File tempFile = new File("data.xml");
+				File newFile = new File(path + ".xml");
+
+				FileInputStream fis = new FileInputStream(tempFile);
+				BufferedReader in = new BufferedReader(new InputStreamReader(fis));
+		 
+				FileWriter fstream = new FileWriter(newFile, true);
+				BufferedWriter out = new BufferedWriter(fstream);
+		 
+				String aLine = null;
+				while ((aLine = in.readLine()) != null) {
+					//Process each line and add output to Dest.txt file
+					out.write(aLine);
+					out.newLine();
+				}
+		 
+				// do not forget to close the buffer reader
+				in.close();
+		 
+				// close buffer writer
+				out.close();
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 	
 }

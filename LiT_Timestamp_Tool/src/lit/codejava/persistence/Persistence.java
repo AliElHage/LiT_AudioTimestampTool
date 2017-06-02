@@ -22,6 +22,8 @@ public class Persistence {
 			Iterator<TimeBlock> tbIt = master2.getTimeBlocks().iterator();
 			while(tbIt.hasNext())
 				master.addTimeBlock(tbIt.next());
+			
+			master.setTimeline(master2.getTimeline());
 		}
 	}
 

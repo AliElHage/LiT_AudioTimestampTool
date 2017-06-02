@@ -1,6 +1,8 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import lit.codejava.controller.PlayingTimer;
@@ -11,9 +13,11 @@ public class AudioTool {
 	
 	private List<TimeBlock> timeBlocks;
 	private String[] previewTableLabels = {"Start Time", "End Time", "Type", "Description"};
+	private ArrayList<Long> times;
 	
 	private AudioTool(){
 		timeBlocks = new ArrayList <TimeBlock>();
+		times = new ArrayList<>();
 	}
 	
 	public static AudioTool getInstance(){
@@ -80,6 +84,34 @@ public class AudioTool {
 	    }
 	    return wasAdded;
 	  }
+	  
+	  public boolean addToTimeline(long aType)
+	  {
+		  boolean wasSet = false;
+		  times.add(aType);
+		  Collections.sort(times);
+		  wasSet = true;
+		  return wasSet;
+	  }
+	  
+	  public boolean removeFromTimeline(int index)
+	  {
+		  boolean wasRemoved = false;
+		  times.remove(index);
+		  wasRemoved = true;
+		  return wasRemoved;
+	  }
+	  
+	  public ArrayList<Long> getTimeline(){
+		  return times;
+	  }
+	  
+	  public boolean setTimeline(ArrayList<Long> timeList){
+		  boolean wasSet = false;
+		  times = timeList;
+		  wasSet = true;
+		  return wasSet;
+	  }
 
 	  public boolean addOrMoveEquipmentAt(TimeBlock timeBlock, int index){
 	    boolean wasAdded = false;
@@ -98,5 +130,43 @@ public class AudioTool {
 	    return wasAdded;
 	  }
 
+	  public void sortTimeBlocks(int column){
+		  Comparator<TimeBlock> comp = new Comparator<TimeBlock>(){
+		       @Override
+		       public int compare(TimeBlock t1, TimeBlock t2)
+		       {
+		    	   int comparison = 0;
+		    	   if(column == 0){
+		    		   comparison = (int)Long.compare(t1.getStartTime(), t2.getStartTime());
+			    	   if(comparison == 0){
+			    		   comparison = (int)Long.compare(t1.getEndTime(), t2.getEndTime());
+			    		   if(comparison == 0){
+				    		   comparison = (int)Long.compare(t1.getType(), t2.getType());
+				    	   }
+			    	   }
+		    	   }
+		    	   else if(column == 1){
+		    		   comparison = (int)Long.compare(t1.getEndTime(), t2.getEndTime());
+			    	   if(comparison == 0){
+			    		   comparison = (int)Long.compare(t1.getStartTime(), t2.getStartTime());
+			    		   if(comparison == 0){
+				    		   comparison = (int)Long.compare(t1.getType(), t2.getType());
+				    	   }
+			    	   }
+		    	   }
+		    	   else if(column == 2){
+		    		   comparison = (int)Long.compare(t1.getType(), t2.getType());
+			    	   if(comparison == 0){
+			    		   comparison = (int)Long.compare(t1.getStartTime(), t2.getStartTime());
+			    		   if(comparison == 0){
+				    		   comparison = (int)Long.compare(t1.getEndTime(), t2.getEndTime());
+				    	   }
+			    	   }
+		    	   }
+		           return comparison;
+		       }        
+		   };
+		   timeBlocks.sort(comp);
+	  }
 	
 }
